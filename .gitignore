@@ -1,5 +1,32 @@
-__pycache__
-*.egg-info
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
 
-wan_models
-checkpoints
+# Models & Checkpoints
+wan_models/
+checkpoints/
+*.pt
+*.pth
+*.safetensors
+
+# Outputs
+videos/
+logs/
+wandb/
+
+# Data
+prompts/
+
+# Environment
+.env
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
