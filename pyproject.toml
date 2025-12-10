@@ -7,3 +7,13 @@ requires-python = ">=3.10,<3.11"
 dependencies = [
     "requests>=2.32.5",
 ]
+
+[[tool.uv.index]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu124"
+priority = "explicit"
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.ngc.nvidia.com"
+priority = "supplemental"
