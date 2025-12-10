@@ -1,3 +1,8 @@
+[tool.uv]
+environments = [
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+]
+
 [project]
 name = "self-forcing-fork"
 version = "0.1.0"
