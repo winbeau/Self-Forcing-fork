@@ -119,10 +119,10 @@ def main():
     if layer_indices is not None:
         print(f"Capturing attention from layers: {layer_indices}")
     else:
-        # Default: capture from multiple layers for Figure 4 analysis
-        # Figure 4 in the paper shows L1H1 (layer 1, head 1) and L5H10 (layer 5, head 10)
-        layer_indices = [0, 1, 4, 5, 14, 15, 29]  # layers 1, 2, 5, 6, 15, 16, 30 (0-indexed)
-        print(f"Capturing attention from layers: {layer_indices} (for Figure 4 analysis)")
+        # Default to middle layer for Figure 4
+        mid_layer = pipeline.num_transformer_blocks // 2
+        layer_indices = [mid_layer]
+        print(f"Capturing attention from mid-layer: {layer_indices}")
 
     # Enable attention capture
     ATTENTION_WEIGHT_CAPTURE.enable(layer_indices=layer_indices)
