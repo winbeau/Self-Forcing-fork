@@ -1,4 +1,4 @@
-from .attention import flash_attention
+from .attention import flash_attention, attention_with_weights, ATTENTION_WEIGHT_CAPTURE
 from .model import WanModel
 from .t5 import T5Decoder, T5Encoder, T5EncoderModel, T5Model
 from .tokenizers import HuggingfaceTokenizer
@@ -13,4 +13,6 @@ __all__ = [
     'T5EncoderModel',
     'HuggingfaceTokenizer',
     'flash_attention',
+    'attention_with_weights',
+    'ATTENTION_WEIGHT_CAPTURE',
 ]

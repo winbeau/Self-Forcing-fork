@@ -26,7 +26,57 @@ import warnings
 __all__ = [
     'flash_attention',
     'attention',
+    'attention_with_weights',
+    'ATTENTION_WEIGHT_CAPTURE',
 ]
+
+
+# Global attention weight capture configuration
+class AttentionWeightCapture:
+    """Global configuration for capturing attention weights during inference."""
+    def __init__(self):
+        self.enabled = False
+        self.layer_indices = None  # None means capture all, or list of indices
+        self.captured_weights = []  # List of captured attention weights
+        self.current_layer_idx = 0  # Current layer index during forward pass
+
+    def enable(self, layer_indices=None):
+        """Enable attention weight capture."""
+        self.enabled = True
+        self.layer_indices = layer_indices
+        self.captured_weights = []
+        self.current_layer_idx = 0
+
+    def disable(self):
+        """Disable attention weight capture."""
+        self.enabled = False
+        self.captured_weights = []
+        self.current_layer_idx = 0
+
+    def reset(self):
+        """Reset captured weights for a new forward pass."""
+        self.captured_weights = []
+        self.current_layer_idx = 0
+
+    def should_capture(self):
+        """Check if we should capture the current layer."""
+        if not self.enabled:
+            return False
+        if self.layer_indices is None:
+            return True
+        return self.current_layer_idx in self.layer_indices
+
+    def save(self, path):
+        """Save captured weights to disk."""
+        import torch
+        torch.save({
+            'attention_weights': self.captured_weights,
+            'layer_indices': self.layer_indices,
+        }, path)
+        print(f"Saved attention weights to {path}")
+
+
+ATTENTION_WEIGHT_CAPTURE = AttentionWeightCapture()
 
 
 def flash_attention(
@@ -151,6 +201,29 @@ def attention(
     dtype=torch.bfloat16,
     fa_version=None,
 ):
+    # Check if we should capture attention weights
+    if ATTENTION_WEIGHT_CAPTURE.enabled and ATTENTION_WEIGHT_CAPTURE.should_capture():
+        out, attn_weights = attention_with_weights(
+            q=q, k=k, v=v,
+            q_lens=q_lens, k_lens=k_lens,
+            dropout_p=dropout_p,
+            softmax_scale=softmax_scale,
+            q_scale=q_scale,
+            causal=causal,
+            dtype=dtype,
+        )
+        # Store the attention weights (move to CPU to save GPU memory)
+        ATTENTION_WEIGHT_CAPTURE.captured_weights.append({
+            'layer_idx': ATTENTION_WEIGHT_CAPTURE.current_layer_idx,
+            'attn_weights': attn_weights.cpu(),
+            'q_shape': q.shape,
+            'k_shape': k.shape,
+        })
+        ATTENTION_WEIGHT_CAPTURE.current_layer_idx += 1
+        return out
+
+    ATTENTION_WEIGHT_CAPTURE.current_layer_idx += 1
+
     if FLASH_ATTN_2_AVAILABLE or FLASH_ATTN_3_AVAILABLE:
         return flash_attention(
             q=q,
@@ -183,3 +256,75 @@ def attention(
 
         out = out.transpose(1, 2).contiguous()
         return out
+
+
+def attention_with_weights(
+    q,
+    k,
+    v,
+    q_lens=None,
+    k_lens=None,
+    dropout_p=0.,
+    softmax_scale=None,
+    q_scale=None,
+    causal=False,
+    dtype=torch.bfloat16,
+):
+    """
+    Compute attention with explicit attention weights.
+    This is slower than flash attention but allows us to capture the attention weights.
+
+    Args:
+        q: Query tensor of shape [B, Lq, Nq, C]
+        k: Key tensor of shape [B, Lk, Nk, C]
+        v: Value tensor of shape [B, Lk, Nk, C]
+
+    Returns:
+        out: Output tensor of shape [B, Lq, Nq, C]
+        attn_weights: Attention weights of shape [B, Nq, Lq, Lk]
+    """
+    if q_lens is not None or k_lens is not None:
+        warnings.warn(
+            'Padding mask is disabled when computing attention weights. It can have a significant impact on performance.'
+        )
+
+    # q: [B, Lq, N, C] -> [B, N, Lq, C]
+    # k: [B, Lk, N, C] -> [B, N, Lk, C]
+    # v: [B, Lk, N, C] -> [B, N, Lk, C]
+    q = q.transpose(1, 2).to(dtype)
+    k = k.transpose(1, 2).to(dtype)
+    v = v.transpose(1, 2).to(dtype)
+
+    if q_scale is not None:
+        q = q * q_scale
+
+    # Compute scale
+    if softmax_scale is None:
+        softmax_scale = q.shape[-1] ** -0.5
+
+    # Compute attention scores: [B, N, Lq, Lk]
+    attn_scores = torch.matmul(q, k.transpose(-2, -1)) * softmax_scale
+
+    # Apply causal mask if needed
+    if causal:
+        lq, lk = attn_scores.shape[-2], attn_scores.shape[-1]
+        causal_mask = torch.triu(
+            torch.ones(lq, lk, device=attn_scores.device, dtype=torch.bool),
+            diagonal=1
+        )
+        attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
+
+    # Compute attention weights
+    attn_weights = torch.softmax(attn_scores, dim=-1)
+
+    # Apply dropout
+    if dropout_p > 0.:
+        attn_weights = torch.nn.functional.dropout(attn_weights, p=dropout_p)
+
+    # Compute output: [B, N, Lq, C]
+    out = torch.matmul(attn_weights, v)
+
+    # Transpose back: [B, N, Lq, C] -> [B, Lq, N, C]
+    out = out.transpose(1, 2).contiguous()
+
+    return out, attn_weights
