@@ -1,7 +1,11 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "self-forcing-fork"
 version = "0.1.0"
-description = "Add your description here"
+description = "Self-Forcing: Autoregressive video diffusion with simulated inference during training"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 dependencies = [
@@ -39,6 +43,7 @@ dependencies = [
     "pycocotools>=2.0.10",
     "pycuda>=2025.1.2",
     "pydantic==2.10.6",
+    "pytest>=9.0.2",
     "requests>=2.32.5",
     "scikit-image>=0.25.2",
     "seaborn>=0.13.2",
@@ -75,3 +80,7 @@ url = "https://pypi.ngc.nvidia.com"
 torch = { index = "pytorch" }
 torchvision = { index = "pytorch" }
 clip = { git = "https://github.com/openai/CLIP.git" }
+
+[tool.hatch.build.targets.wheel]
+only-include = ["."]
+

@@ -11,12 +11,9 @@ Built on top of [CausVid](https://github.com/tianweiy/CausVid) and [Wan2.1](http
 ## Installation & Setup
 
 ```bash
-# Create environment
-conda create -n self_forcing python=3.10 -y
-conda activate self_forcing
-pip install -r requirements.txt
-pip install flash-attn --no-build-isolation
-python setup.py develop
+# Install dependencies with uv
+uv sync
+uv pip install flash-attn --no-build-isolation
 ```
 
 ## Common Commands
@@ -188,3 +185,60 @@ Key config parameters:
 **VAE Decoding**: The VAE maintains cache across blocks for temporal consistency. First block typically skips first 3 decoded frames.
 
 **Torch Compile**: Demo supports `torch.compile` for speedup (compile happens on first block, takes 5-10 min).
+
+## Experiments & Analysis
+
+### Directory Structure
+- `experiments/` - Attention extraction and analysis scripts
+- `notebooks/` - Jupyter notebooks for visualization
+- `figures/` - Generated SVG figures
+- `cache/` - Cached attention weights and intermediate data
+
+### Figure 4 Reproduction (Attention Sink Analysis)
+
+复现 Deep Forcing 论文 Figure 4 的 attention sink 现象。
+
+**背景**: 论文描述最后一个 block（frames 19-21）对前面帧（frames 0-18）的注意力权重分布，展示 attention sink 现象。
+
+**关键文件**:
+- `experiments/run_extraction_figure4.py` - 提取注意力权重
+- `experiments/test_attention_extraction.py` - 验证提取逻辑
+- `notebooks/plt_fig4.ipynb` - 可视化 Figure 4
+- `wan/modules/attention.py` - ATTENTION_WEIGHT_CAPTURE 机制
+
+**运行提取**:
+```bash
+# 使用基础 Wan 模型（不加载 checkpoint）
+PYTHONPATH=. python experiments/run_extraction_figure4.py \
+    --config_path configs/self_forcing_dmd.yaml \
+    --output_path cache/attention_cache_wan_base.pt \
+    --layer_indices 0 4 \
+    --num_frames 21 \
+    --no_checkpoint
+
+# 使用 Self-Forcing 训练后的模型
+PYTHONPATH=. python experiments/run_extraction_figure4.py \
+    --config_path configs/self_forcing_dmd.yaml \
+    --output_path cache/attention_cache_self_forcing.pt \
+    --layer_indices 0 4 \
+    --num_frames 21 \
+    --checkpoint_path checkpoints/self_forcing_dmd.pt
+```
+
+**运行测试**:
+```bash
+PYTHONPATH=. pytest experiments/test_attention_extraction.py -v -s
+```
+
+**技术细节**:
+- `ATTENTION_WEIGHT_CAPTURE` 使用模块化索引（`current_layer_idx % num_layers`）
+- Wan 模型有 30 层，每个 block 3 帧，frame_seq_length=1560 tokens/帧
+- 捕获 pre-softmax logits（不是 softmax 后的概率）
+- 最后一个 block 的 K 包含所有历史帧（Q=3帧, K=21帧）
+
+**进度**:
+- [x] 修复 ATTENTION_WEIGHT_CAPTURE 模块化索引问题
+- [x] 添加 pytest 测试验证捕获逻辑
+- [x] 测试通过：最后 block Q=3帧, K=21帧
+- [ ] 对比基础模型 vs Self-Forcing 模型的 attention 分布
+- [ ] 分析 attention sink 现象

@@ -30,3 +30,18 @@ venv/
 .idea/
 .vscode/
 *.swp
+
+# Experiment outputs
+cache/
+figures/
+notebooks/
+experiments/
+
+# Jupyter
+.ipynb_checkpoints/
+jupyter.log
+jupyter.pid
+
+# System
+.DS_Store
+*.log

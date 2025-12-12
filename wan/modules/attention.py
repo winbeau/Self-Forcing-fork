@@ -45,18 +45,21 @@ class AttentionWeightCapture:
         self.captured_weights = []  # 捕获的注意力权重列表
         self.current_layer_idx = 0  # 当前前向传播的层索引
         self.capture_logits = True  # 是否捕获 pre-softmax logits（默认 True）
+        self.num_layers = 30  # Wan 模型的层数，用于取模
 
-    def enable(self, layer_indices=None, capture_logits=True):
+    def enable(self, layer_indices=None, capture_logits=True, num_layers=30):
         """
         启用注意力权重捕获。
 
         Args:
             layer_indices: 要捕获的层索引列表，None 表示全部
             capture_logits: 如果 True，捕获 pre-softmax logits；否则捕获 post-softmax probs
+            num_layers: 模型的总层数，用于 current_layer_idx 取模
         """
         self.enabled = True
         self.layer_indices = layer_indices
         self.capture_logits = capture_logits
+        self.num_layers = num_layers
         self.captured_weights = []
         self.current_layer_idx = 0
 
@@ -72,12 +75,18 @@ class AttentionWeightCapture:
         self.current_layer_idx = 0
 
     def should_capture(self):
-        """检查是否应该捕获当前层。"""
+        """检查是否应该捕获当前层（使用模块化索引）。"""
         if not self.enabled:
             return False
         if self.layer_indices is None:
             return True
-        return self.current_layer_idx in self.layer_indices
+        # 使用模块化索引，这样每个 denoising step 的相同层都会被检查
+        effective_layer_idx = self.current_layer_idx % self.num_layers
+        return effective_layer_idx in self.layer_indices
+
+    def get_effective_layer_idx(self):
+        """获取当前的有效层索引（模块化后）。"""
+        return self.current_layer_idx % self.num_layers
 
     def save(self, path):
         """保存捕获的权重到磁盘。"""
@@ -229,7 +238,7 @@ def attention(
         )
         # 存储注意力权重（移到 CPU 以节省 GPU 内存）
         ATTENTION_WEIGHT_CAPTURE.captured_weights.append({
-            'layer_idx': ATTENTION_WEIGHT_CAPTURE.current_layer_idx,
+            'layer_idx': ATTENTION_WEIGHT_CAPTURE.get_effective_layer_idx(),  # 使用模块化索引
             'attn_weights': attn_data.cpu(),
             'q_shape': q.shape,
             'k_shape': k.shape,
