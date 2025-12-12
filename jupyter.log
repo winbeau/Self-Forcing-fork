@@ -1,60 +1,59 @@
 nohup: ignoring input
-[I 2025-12-11 20:05:19.614 ServerApp] jupyter_lsp | extension was successfully linked.
-[I 2025-12-11 20:05:19.617 ServerApp] jupyter_server_terminals | extension was successfully linked.
-[I 2025-12-11 20:05:19.622 ServerApp] jupyterlab | extension was successfully linked.
-[I 2025-12-11 20:05:19.626 ServerApp] notebook | extension was successfully linked.
-[I 2025-12-11 20:05:19.838 ServerApp] notebook_shim | extension was successfully linked.
-[I 2025-12-11 20:05:19.855 ServerApp] notebook_shim | extension was successfully loaded.
-[I 2025-12-11 20:05:19.857 ServerApp] jupyter_lsp | extension was successfully loaded.
-[I 2025-12-11 20:05:19.857 ServerApp] jupyter_server_terminals | extension was successfully loaded.
-[I 2025-12-11 20:05:19.859 LabApp] JupyterLab extension loaded from /workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/jupyterlab
-[I 2025-12-11 20:05:19.860 LabApp] JupyterLab application directory is /workspace/Self-Forcing-fork/.venv/share/jupyter/lab
-[I 2025-12-11 20:05:19.860 LabApp] Extension Manager is 'pypi'.
-[I 2025-12-11 20:05:19.950 ServerApp] jupyterlab | extension was successfully loaded.
-[I 2025-12-11 20:05:19.954 ServerApp] notebook | extension was successfully loaded.
-[I 2025-12-11 20:05:19.955 ServerApp] Serving notebooks from local directory: /workspace/Self-Forcing-fork
-[I 2025-12-11 20:05:19.955 ServerApp] Jupyter Server 2.17.0 is running at:
-[I 2025-12-11 20:05:19.955 ServerApp] http://89f9ea36c024:8888/lab?token=d483b2f7b56099e45d68ae81eaaf1504efb01c2a7dbfd167
-[I 2025-12-11 20:05:19.955 ServerApp]     http://127.0.0.1:8888/lab?token=d483b2f7b56099e45d68ae81eaaf1504efb01c2a7dbfd167
-[I 2025-12-11 20:05:19.955 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
-[C 2025-12-11 20:05:19.957 ServerApp] 
+[I 2025-12-12 17:39:55.217 ServerApp] jupyter_lsp | extension was successfully linked.
+[I 2025-12-12 17:39:55.220 ServerApp] jupyter_server_terminals | extension was successfully linked.
+[I 2025-12-12 17:39:55.225 ServerApp] jupyterlab | extension was successfully linked.
+[I 2025-12-12 17:39:55.225 ServerApp] jupyterlab_code_formatter | extension was successfully linked.
+[I 2025-12-12 17:39:55.229 ServerApp] notebook | extension was successfully linked.
+[I 2025-12-12 17:39:55.442 ServerApp] notebook_shim | extension was successfully linked.
+[I 2025-12-12 17:39:55.458 ServerApp] notebook_shim | extension was successfully loaded.
+[I 2025-12-12 17:39:55.460 ServerApp] jupyter_lsp | extension was successfully loaded.
+[I 2025-12-12 17:39:55.461 ServerApp] jupyter_server_terminals | extension was successfully loaded.
+[I 2025-12-12 17:39:55.464 LabApp] JupyterLab extension loaded from /workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/jupyterlab
+[I 2025-12-12 17:39:55.464 LabApp] JupyterLab application directory is /workspace/Self-Forcing-fork/.venv/share/jupyter/lab
+[I 2025-12-12 17:39:55.464 LabApp] Extension Manager is 'pypi'.
+[I 2025-12-12 17:39:55.555 ServerApp] jupyterlab | extension was successfully loaded.
+[I 2025-12-12 17:39:55.555 ServerApp] Registered jupyterlab_code_formatter server extension
+[I 2025-12-12 17:39:55.555 ServerApp] jupyterlab_code_formatter | extension was successfully loaded.
+[I 2025-12-12 17:39:55.559 ServerApp] notebook | extension was successfully loaded.
+[I 2025-12-12 17:39:55.559 ServerApp] Serving notebooks from local directory: /workspace/Self-Forcing-fork
+[I 2025-12-12 17:39:55.559 ServerApp] Jupyter Server 2.17.0 is running at:
+[I 2025-12-12 17:39:55.559 ServerApp] http://89f9ea36c024:8888/lab?token=a101dec926c687011090a159cad645838d462815a0936c73
+[I 2025-12-12 17:39:55.559 ServerApp]     http://127.0.0.1:8888/lab?token=a101dec926c687011090a159cad645838d462815a0936c73
+[I 2025-12-12 17:39:55.559 ServerApp] Use Control-C to stop this server and shut down all kernels (twice to skip confirmation).
+[C 2025-12-12 17:39:55.562 ServerApp] 
     
     To access the server, open this file in a browser:
-        file:///root/.local/share/jupyter/runtime/jpserver-650-open.html
+        file:///root/.local/share/jupyter/runtime/jpserver-28185-open.html
     Or copy and paste one of these URLs:
-        http://89f9ea36c024:8888/lab?token=d483b2f7b56099e45d68ae81eaaf1504efb01c2a7dbfd167
-        http://127.0.0.1:8888/lab?token=d483b2f7b56099e45d68ae81eaaf1504efb01c2a7dbfd167
-[I 2025-12-11 20:05:19.974 ServerApp] Skipped non-installed server(s): basedpyright, bash-language-server, dockerfile-language-server-nodejs, javascript-typescript-langserver, jedi-language-server, julia-language-server, pyrefly, pyright, python-language-server, python-lsp-server, r-languageserver, sql-language-server, texlab, typescript-language-server, unified-language-server, vscode-css-languageserver-bin, vscode-html-languageserver-bin, vscode-json-languageserver-bin, yaml-language-server
-[I 2025-12-11 20:10:09.568 ServerApp] 302 GET / (@172.17.0.1) 0.55ms
-[W 2025-12-11 20:10:10.945 ServerApp] 404 GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__e97ca530_88d9_46a5_8829_b244239f7b32__0 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 35.75ms referer=http://localhost:8890/lab?
-[W 2025-12-11 20:10:11.006 ServerApp] 404 GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__54ad24f9_0247_40ef_844f_4b2c87773e96__1 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 2.15ms referer=http://localhost:8890/lab?
-[W 2025-12-11 20:10:16.085 LabApp] Could not determine jupyterlab build status without nodejs
-[W 2025-12-11 20:10:17.771 ServerApp] Notebook plot_figure4.ipynb is not trusted
-[I 2025-12-11 20:10:18.285 ServerApp] Kernel started: 03df93f1-0e4d-41f9-9774-131480b3a0fb
-[I 2025-12-11 20:10:18.959 ServerApp] Adapting from protocol version 5.3 (kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb) to 5.4 (client).
-[I 2025-12-11 20:10:18.962 ServerApp] Connecting to kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb.
-[W 2025-12-11 20:10:18.965 ServerApp] The websocket_ping_timeout (90000) cannot be longer than the websocket_ping_interval (30000).
+        http://89f9ea36c024:8888/lab?token=a101dec926c687011090a159cad645838d462815a0936c73
+        http://127.0.0.1:8888/lab?token=a101dec926c687011090a159cad645838d462815a0936c73
+[I 2025-12-12 17:39:55.579 ServerApp] Skipped non-installed server(s): basedpyright, bash-language-server, dockerfile-language-server-nodejs, javascript-typescript-langserver, jedi-language-server, julia-language-server, pyrefly, pyright, python-language-server, python-lsp-server, r-languageserver, sql-language-server, texlab, typescript-language-server, unified-language-server, vscode-css-languageserver-bin, vscode-html-languageserver-bin, vscode-json-languageserver-bin, yaml-language-server
+[I 2025-12-12 17:40:00.536 ServerApp] Saving file at /plt_fig4.ipynb
+[W 2025-12-12 17:40:01.553 ServerApp] 404 GET /api/kernels/0635c3eb-dcab-41b8-ad98-c994eba77654?1765561204979 (172.17.0.1): Kernel does not exist: 0635c3eb-dcab-41b8-ad98-c994eba77654
+[W 2025-12-12 17:40:01.553 ServerApp] wrote error: 'Kernel does not exist: 0635c3eb-dcab-41b8-ad98-c994eba77654'
+    Traceback (most recent call last):
+      File "/workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/tornado/web.py", line 1859, in _execute
+        result = await result
+      File "/workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/jupyter_server/auth/decorator.py", line 73, in inner
+        return await out
+      File "/workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/jupyter_server/services/kernels/handlers.py", line 75, in get
+        model = await ensure_async(km.kernel_model(kernel_id))
+      File "/workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/jupyter_server/services/kernels/kernelmanager.py", line 513, in kernel_model
+        self._check_kernel_id(kernel_id)
+      File "/workspace/Self-Forcing-fork/.venv/lib/python3.10/site-packages/jupyter_server/services/kernels/kernelmanager.py", line 544, in _check_kernel_id
+        raise web.HTTPError(404, "Kernel does not exist: %s" % kernel_id)
+    tornado.web.HTTPError: HTTP 404: Not Found (Kernel does not exist: 0635c3eb-dcab-41b8-ad98-c994eba77654)
+[W 2025-12-12 17:40:01.556 ServerApp] 404 GET /api/kernels/0635c3eb-dcab-41b8-ad98-c994eba77654?1765561204979 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 5.55ms referer=http://localhost:8890/doc/tree/plt_fig4.ipynb
+[W 2025-12-12 17:40:07.037 ServerApp] 404 GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__f45aa401_6d35_40f8_b8e3_221d757c048e__0 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 39.25ms referer=http://localhost:8890/doc/tree/plt_fig4.ipynb
+[W 2025-12-12 17:40:07.041 ServerApp] 404 GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__9544d744_877b_4bb7_a43e_f4ddc9a7a339__1 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 2.23ms referer=http://localhost:8890/doc/tree/plt_fig4.ipynb
+[W 2025-12-12 17:40:08.843 LabApp] Could not determine jupyterlab build status without nodejs
+[I 2025-12-12 17:40:13.131 ServerApp] Kernel started: 9e041119-2d92-4748-b68a-c16af68892c6
+[I 2025-12-12 17:40:13.766 ServerApp] Adapting from protocol version 5.3 (kernel 9e041119-2d92-4748-b68a-c16af68892c6) to 5.4 (client).
+[I 2025-12-12 17:40:13.768 ServerApp] Connecting to kernel 9e041119-2d92-4748-b68a-c16af68892c6.
+[W 2025-12-12 17:40:13.772 ServerApp] The websocket_ping_timeout (90000) cannot be longer than the websocket_ping_interval (30000).
     Setting websocket_ping_timeout=30000
-[I 2025-12-11 20:10:19.160 ServerApp] Starting buffering for 03df93f1-0e4d-41f9-9774-131480b3a0fb:42e2b028-d274-4f19-b581-c12b0851fcec
-[I 2025-12-11 20:10:19.199 ServerApp] Adapting from protocol version 5.3 (kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb) to 5.4 (client).
-[I 2025-12-11 20:10:19.201 ServerApp] Connecting to kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb.
-[I 2025-12-11 20:10:19.476 ServerApp] Adapting from protocol version 5.3 (kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb) to 5.4 (client).
-[I 2025-12-11 20:10:19.477 ServerApp] Connecting to kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb.
-[I 2025-12-11 20:13:19.922 ServerApp] Kernel restarted: 03df93f1-0e4d-41f9-9774-131480b3a0fb
-[I 2025-12-11 20:13:20.014 ServerApp] Starting buffering for 03df93f1-0e4d-41f9-9774-131480b3a0fb:cd949da7-da71-454e-91e3-433d8fb8b03c
-[I 2025-12-11 20:13:20.420 ServerApp] Adapting from protocol version 5.3 (kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb) to 5.4 (client).
-[I 2025-12-11 20:13:20.422 ServerApp] Connecting to kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb.
-[I 2025-12-11 20:13:20.422 ServerApp] Restoring connection for 03df93f1-0e4d-41f9-9774-131480b3a0fb:cd949da7-da71-454e-91e3-433d8fb8b03c
-[I 2025-12-11 20:13:20.442 ServerApp] Replaying 2 buffered messages
-[I 2025-12-11 20:14:19.753 ServerApp] Saving file at /plot_figure4.ipynb
-[I 2025-12-11 20:21:20.857 ServerApp] Starting buffering for 03df93f1-0e4d-41f9-9774-131480b3a0fb:cd949da7-da71-454e-91e3-433d8fb8b03c
-[W 2025-12-11 20:21:21.220 ServerApp] 404 GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__d4b300bf_4e98_4f83_ab86_82725f2d9267__0 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 3.65ms referer=http://localhost:8890/doc/tree/plot_figure4.ipynb
-[W 2025-12-11 20:21:21.224 ServerApp] 404 GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__7b977af0_02f3_4bb4_b853_f48b83d37203__1 (4b4c9c4842df4edfaf32197c57e7576e@172.17.0.1) 2.68ms referer=http://localhost:8890/doc/tree/plot_figure4.ipynb
-[W 2025-12-11 20:21:22.829 LabApp] Could not determine jupyterlab build status without nodejs
-[I 2025-12-11 20:21:23.274 ServerApp] Adapting from protocol version 5.3 (kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb) to 5.4 (client).
-[I 2025-12-11 20:21:23.276 ServerApp] Connecting to kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb.
-[I 2025-12-11 20:21:23.513 ServerApp] Starting buffering for 03df93f1-0e4d-41f9-9774-131480b3a0fb:e5af97fc-3953-4deb-9191-92d8b10ffb2c
-[W 2025-12-11 20:21:25.158 ServerApp] Notebook plot_figure4.ipynb is not trusted
-[I 2025-12-11 20:21:26.168 ServerApp] Adapting from protocol version 5.3 (kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb) to 5.4 (client).
-[I 2025-12-11 20:21:26.170 ServerApp] Connecting to kernel 03df93f1-0e4d-41f9-9774-131480b3a0fb.
-[I 2025-12-11 20:21:27.282 ServerApp] Saving file at /plot_figure4.ipynb
+[I 2025-12-12 17:40:14.074 ServerApp] Starting buffering for 9e041119-2d92-4748-b68a-c16af68892c6:d192a165-d696-48aa-b05a-a8671f4c14f2
+[I 2025-12-12 17:40:14.078 ServerApp] Adapting from protocol version 5.3 (kernel 9e041119-2d92-4748-b68a-c16af68892c6) to 5.4 (client).
+[I 2025-12-12 17:40:14.080 ServerApp] Connecting to kernel 9e041119-2d92-4748-b68a-c16af68892c6.
+[I 2025-12-12 17:40:14.360 ServerApp] Adapting from protocol version 5.3 (kernel 9e041119-2d92-4748-b68a-c16af68892c6) to 5.4 (client).
+[I 2025-12-12 17:40:14.361 ServerApp] Connecting to kernel 9e041119-2d92-4748-b68a-c16af68892c6.

@@ -33,33 +33,46 @@ __all__ = [
 
 # Global attention weight capture configuration
 class AttentionWeightCapture:
-    """Global configuration for capturing attention weights during inference."""
+    """
+    全局注意力权重捕获配置。
+
+    重要：捕获的是 pre-softmax logits（注意力分数），而非 softmax 后的概率！
+    这对于复现论文 Figure 4 至关重要，因为论文中的 Y 轴范围是 [-4, 6]。
+    """
     def __init__(self):
         self.enabled = False
-        self.layer_indices = None  # None means capture all, or list of indices
-        self.captured_weights = []  # List of captured attention weights
-        self.current_layer_idx = 0  # Current layer index during forward pass
+        self.layer_indices = None  # None 表示捕获所有层，或者是层索引列表
+        self.captured_weights = []  # 捕获的注意力权重列表
+        self.current_layer_idx = 0  # 当前前向传播的层索引
+        self.capture_logits = True  # 是否捕获 pre-softmax logits（默认 True）
 
-    def enable(self, layer_indices=None):
-        """Enable attention weight capture."""
+    def enable(self, layer_indices=None, capture_logits=True):
+        """
+        启用注意力权重捕获。
+
+        Args:
+            layer_indices: 要捕获的层索引列表，None 表示全部
+            capture_logits: 如果 True，捕获 pre-softmax logits；否则捕获 post-softmax probs
+        """
         self.enabled = True
         self.layer_indices = layer_indices
+        self.capture_logits = capture_logits
         self.captured_weights = []
         self.current_layer_idx = 0
 
     def disable(self):
-        """Disable attention weight capture."""
+        """禁用注意力权重捕获。"""
         self.enabled = False
         self.captured_weights = []
         self.current_layer_idx = 0
 
     def reset(self):
-        """Reset captured weights for a new forward pass."""
+        """重置捕获的权重，用于新的前向传播。"""
         self.captured_weights = []
         self.current_layer_idx = 0
 
     def should_capture(self):
-        """Check if we should capture the current layer."""
+        """检查是否应该捕获当前层。"""
         if not self.enabled:
             return False
         if self.layer_indices is None:
@@ -67,11 +80,12 @@ class AttentionWeightCapture:
         return self.current_layer_idx in self.layer_indices
 
     def save(self, path):
-        """Save captured weights to disk."""
+        """保存捕获的权重到磁盘。"""
         import torch
         torch.save({
             'attention_weights': self.captured_weights,
             'layer_indices': self.layer_indices,
+            'capture_logits': self.capture_logits,
         }, path)
         print(f"Saved attention weights to {path}")
 
@@ -201,9 +215,9 @@ def attention(
     dtype=torch.bfloat16,
     fa_version=None,
 ):
-    # Check if we should capture attention weights
+    # 检查是否需要捕获注意力权重
     if ATTENTION_WEIGHT_CAPTURE.enabled and ATTENTION_WEIGHT_CAPTURE.should_capture():
-        out, attn_weights = attention_with_weights(
+        out, attn_data = attention_with_weights(
             q=q, k=k, v=v,
             q_lens=q_lens, k_lens=k_lens,
             dropout_p=dropout_p,
@@ -211,13 +225,15 @@ def attention(
             q_scale=q_scale,
             causal=causal,
             dtype=dtype,
+            return_logits=ATTENTION_WEIGHT_CAPTURE.capture_logits,  # 根据配置返回 logits 或 probs
         )
-        # Store the attention weights (move to CPU to save GPU memory)
+        # 存储注意力权重（移到 CPU 以节省 GPU 内存）
         ATTENTION_WEIGHT_CAPTURE.captured_weights.append({
             'layer_idx': ATTENTION_WEIGHT_CAPTURE.current_layer_idx,
-            'attn_weights': attn_weights.cpu(),
+            'attn_weights': attn_data.cpu(),
             'q_shape': q.shape,
             'k_shape': k.shape,
+            'is_logits': ATTENTION_WEIGHT_CAPTURE.capture_logits,  # 标记是 logits 还是 probs
         })
         ATTENTION_WEIGHT_CAPTURE.current_layer_idx += 1
         return out
@@ -269,19 +285,24 @@ def attention_with_weights(
     q_scale=None,
     causal=False,
     dtype=torch.bfloat16,
+    return_logits=True,
 ):
     """
-    Compute attention with explicit attention weights.
-    This is slower than flash attention but allows us to capture the attention weights.
+    计算注意力并返回注意力权重。
+    这比 flash attention 慢，但允许我们捕获注意力权重用于可视化。
 
     Args:
-        q: Query tensor of shape [B, Lq, Nq, C]
-        k: Key tensor of shape [B, Lk, Nk, C]
-        v: Value tensor of shape [B, Lk, Nk, C]
+        q: Query 张量，形状 [B, Lq, Nq, C]
+        k: Key 张量，形状 [B, Lk, Nk, C]
+        v: Value 张量，形状 [B, Lk, Nk, C]
+        return_logits: 如果 True，返回 pre-softmax logits（用于 Figure 4）；
+                      否则返回 post-softmax 概率
 
     Returns:
-        out: Output tensor of shape [B, Lq, Nq, C]
-        attn_weights: Attention weights of shape [B, Nq, Lq, Lk]
+        out: 输出张量，形状 [B, Lq, Nq, C]
+        attn_data: 注意力数据，形状 [B, Nq, Lq, Lk]
+                  如果 return_logits=True，这是 pre-softmax 分数（可以是负值）
+                  如果 return_logits=False，这是 post-softmax 概率 [0,1]
     """
     if q_lens is not None or k_lens is not None:
         warnings.warn(
@@ -298,14 +319,14 @@ def attention_with_weights(
     if q_scale is not None:
         q = q * q_scale
 
-    # Compute scale
+    # 计算缩放因子
     if softmax_scale is None:
         softmax_scale = q.shape[-1] ** -0.5
 
-    # Compute attention scores: [B, N, Lq, Lk]
+    # 计算注意力分数（logits）: [B, N, Lq, Lk]
     attn_scores = torch.matmul(q, k.transpose(-2, -1)) * softmax_scale
 
-    # Apply causal mask if needed
+    # 如果需要 causal mask
     if causal:
         lq, lk = attn_scores.shape[-2], attn_scores.shape[-1]
         causal_mask = torch.triu(
@@ -314,17 +335,21 @@ def attention_with_weights(
         )
         attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
 
-    # Compute attention weights
+    # 计算注意力权重（概率）
     attn_weights = torch.softmax(attn_scores, dim=-1)
 
-    # Apply dropout
+    # 应用 dropout
     if dropout_p > 0.:
         attn_weights = torch.nn.functional.dropout(attn_weights, p=dropout_p)
 
-    # Compute output: [B, N, Lq, C]
+    # 计算输出: [B, N, Lq, C]
     out = torch.matmul(attn_weights, v)
 
-    # Transpose back: [B, N, Lq, C] -> [B, Lq, N, C]
+    # 转置回来: [B, N, Lq, C] -> [B, Lq, N, C]
     out = out.transpose(1, 2).contiguous()
 
-    return out, attn_weights
+    # 根据配置返回 logits 或 probs
+    if return_logits:
+        return out, attn_scores  # 返回 pre-softmax logits
+    else:
+        return out, attn_weights  # 返回 post-softmax probs

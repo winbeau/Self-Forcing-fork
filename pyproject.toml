@@ -7,6 +7,7 @@ requires-python = ">=3.10,<3.11"
 dependencies = [
     "accelerate>=1.1.1",
     "av>=13.1.0",
+    "black>=25.12.0",
     "certifi>=2025.11.12",
     "clip",
     "dashscope>=1.25.3",
@@ -21,7 +22,9 @@ dependencies = [
     "imageio>=2.37.2",
     "imageio-ffmpeg>=0.6.0",
     "ipykernel>=7.1.0",
+    "isort>=7.0.0",
     "jupyter>=1.1.1",
+    "jupyterlab-code-formatter>=3.0.2",
     "lmdb>=1.7.5",
     "matplotlib>=3.10.7",
     "numpy>=1.24.4",
