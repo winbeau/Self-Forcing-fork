@@ -34,8 +34,6 @@ venv/
 # Experiment outputs
 cache/
 figures/
-notebooks/
-experiments/
 
 # Jupyter
 .ipynb_checkpoints/
