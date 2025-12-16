@@ -386,7 +386,12 @@ def attention_with_weights(
         attn_scores = attn_scores.masked_fill(window_mask, float('-inf'))
 
     # 计算注意力权重（概率）
-    attn_weights = torch.softmax(attn_scores, dim=-1)
+    # 当 key padding mask + window mask（或 causal mask）导致某些 query 行被完全屏蔽时，
+    # softmax(-inf, -inf, ...) 会产生 NaN；flash-attn 在这种情况下会输出 0。
+    row_has_any_valid = torch.isfinite(attn_scores).any(dim=-1, keepdim=True)
+    attn_scores_for_softmax = attn_scores.masked_fill(~row_has_any_valid, 0.0)
+    attn_weights = torch.softmax(attn_scores_for_softmax, dim=-1)
+    attn_weights = attn_weights.masked_fill(~row_has_any_valid, 0.0)
 
     # 应用 dropout
     if dropout_p > 0.:
