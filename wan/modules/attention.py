@@ -358,32 +358,39 @@ def attention_with_weights(
         q_valid = q_idx < q_lens.view(bsz, 1, 1, 1)
         attn_scores = attn_scores.masked_fill(~q_valid, 0.0)
 
+    # 对齐非方阵 Q/K：query i 对应 key i + (lk - lq)。
+    # 对于 varlen（k_lens/q_lens）场景，flash-attn 使用每个样本的有效长度来计算 offset，
+    # 否则 window/causal 的对齐会与快路径不一致。
+    if (k_lens is not None) or (q_lens is not None):
+        lk_eff = k_lens if k_lens is not None else torch.full((bsz,), lk, device=attn_scores.device, dtype=torch.long)
+        lq_eff = q_lens if q_lens is not None else torch.full((bsz,), lq, device=attn_scores.device, dtype=torch.long)
+        offset = (lk_eff - lq_eff).view(bsz, 1, 1)  # [B,1,1]
+    else:
+        offset = lk - lq  # scalar
+
+    q_pos = torch.arange(lq, device=attn_scores.device).view(1, lq, 1)  # [1,Lq,1]
+    k_pos = torch.arange(lk, device=attn_scores.device).view(1, 1, lk)  # [1,1,Lk]
+    center = q_pos + offset  # scalar or [B,1,1] -> [B,Lq,1]
+
     # 如果需要 causal mask
     if causal:
-        offset = lk - lq
-        causal_mask = torch.triu(
-            torch.ones(lq, lk, device=attn_scores.device, dtype=torch.bool),
-            diagonal=offset + 1
-        )
-        attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
+        # Mask positions where key is "in the future" relative to the aligned center.
+        causal_mask = k_pos > center  # [B,Lq,Lk] or [1,Lq,Lk]
+        attn_scores = attn_scores.masked_fill(causal_mask.unsqueeze(1), float('-inf'))
 
     # Sliding window local attention (if enabled).
     # Semantics follow the same "offset" convention as the causal mask for non-square Q/K:
-    # query position i is aligned to key position i + (lk - lq).
+    # query position i is aligned to key position i + (lk - lq) (varlen uses per-sample offset).
     if window_size != (-1, -1):
         left, right = window_size
         if left < 0:
             left = lk
         if right < 0:
             right = lk
-        offset = lk - lq
-        q_pos = torch.arange(lq, device=attn_scores.device).view(lq, 1)
-        k_pos = torch.arange(lk, device=attn_scores.device).view(1, lk)
-        center = q_pos + offset
         lower = center - left
         upper = center + right
-        window_mask = (k_pos < lower) | (k_pos > upper)
-        attn_scores = attn_scores.masked_fill(window_mask, float('-inf'))
+        window_mask = (k_pos < lower) | (k_pos > upper)  # [B,Lq,Lk] or [1,Lq,Lk]
+        attn_scores = attn_scores.masked_fill(window_mask.unsqueeze(1), float('-inf'))
 
     # 计算注意力权重（概率）
     # 当 key padding mask + window mask（或 causal mask）导致某些 query 行被完全屏蔽时，
