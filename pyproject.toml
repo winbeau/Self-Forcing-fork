@@ -59,6 +59,7 @@ dependencies = [
     "torch>=2.4.0",
     "torchao>=0.14.1",
     "torchvision>=0.19.0",
+    "torchaudio>=2.4.0",
     "tqdm>=4.67.1",
     "transformers>=4.49.0",
     "wandb>=0.23.1",
@@ -73,7 +74,7 @@ environments = [
 # 2. 定义 PyTorch 源，但标记为 explicit（显式），不让它自动干扰其他包
 [[tool.uv.index]]
 name = "pytorch"
-url = "https://download.pytorch.org/whl/cu124"
+url = "https://download.pytorch.org/whl/cu121"
 explicit = true
 
 # 3. 定义 Nvidia 源
@@ -85,6 +86,7 @@ url = "https://pypi.ngc.nvidia.com"
 [tool.uv.sources]
 torch = { index = "pytorch" }
 torchvision = { index = "pytorch" }
+torchaudio = { index = "pytorch" }  # <-- 加上这一行
 clip = { git = "https://github.com/openai/CLIP.git" }
 
 [tool.hatch.build.targets.wheel]
