@@ -489,6 +489,15 @@ wheels = [
 ]
 
 [[package]]
+name = "editables"
+version = "0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/37/4a/986d35164e2033ddfb44515168a281a7986e260d344cf369c3f52d4c3275/editables-0.5.tar.gz", hash = "sha256:309627d9b5c4adc0e668d8c6fa7bac1ba7c8c5d415c2d27f60f081f8e80d1de2", size = 14744, upload-time = "2023-07-24T18:26:30.08Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/be/0f2f4a5e8adc114a02b63d92bf8edbfa24db6fc602fca83c885af2479e0e/editables-0.5-py3-none-any.whl", hash = "sha256:61e5ffa82629e0d8bfe09bc44a07db3c1ab8ed1ce78a6980732870f19b5e7d4c", size = 5098, upload-time = "2023-07-24T18:26:29.046Z" },
+]
+
+[[package]]
 name = "einops"
 version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -535,6 +544,16 @@ sdist = { url = "https://files.pythonhosted.org/packages/58/46/0028a82567109b5ef
 wheels = [
     { url = "https://files.pythonhosted.org/packages/76/91/7216b27286936c16f5b4d0c530087e4a54eead683e6b0b73dd0c64844af6/filelock-3.20.0-py3-none-any.whl", hash = "sha256:339b4732ffda5cd79b13f4e2711a31b0365ce445d95d243bb996273d072546a2", size = 16054, upload-time = "2025-10-08T18:03:48.35Z" },
 ]
+
+[[package]]
+name = "flash-attn"
+version = "2.8.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "einops", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3b/b2/8d76c41ad7974ee264754709c22963447f7f8134613fd9ce80984ed0dab7/flash_attn-2.8.3.tar.gz", hash = "sha256:1e71dd64a9e0280e0447b8a0c2541bad4bf6ac65bdeaa2f90e51a9e57de0370d", size = 8447812, upload-time = "2025-08-15T08:28:12.911Z" }
 
 [[package]]
 name = "flask"
@@ -2294,7 +2313,9 @@ dependencies = [
     { name = "diffusers", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "dominate", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "easydict", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "editables", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "einops", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "flash-attn", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "flask", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "flask-socketio", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "ftfy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -2317,6 +2338,9 @@ dependencies = [
     { name = "open-clip-torch", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "opencv-python", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "opencv-python-headless", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "packaging", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "pathspec", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
+    { name = "pluggy", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pycocotools", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pycuda", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
     { name = "pydantic", marker = "platform_machine == 'x86_64' and sys_platform == 'linux'" },
@@ -2346,7 +2370,9 @@ requires-dist = [
     { name = "diffusers", specifier = ">=0.31.0" },
     { name = "dominate", specifier = ">=2.9.1" },
     { name = "easydict", specifier = ">=1.13" },
+    { name = "editables", specifier = ">=0.5" },
     { name = "einops", specifier = ">=0.8.1" },
+    { name = "flash-attn", specifier = ">=2.8.3" },
     { name = "flask", specifier = ">=3.1.2" },
     { name = "flask-socketio", specifier = ">=5.5.1" },
     { name = "ftfy", specifier = ">=6.3.1" },
@@ -2369,6 +2395,9 @@ requires-dist = [
     { name = "open-clip-torch", specifier = ">=3.2.0" },
     { name = "opencv-python", specifier = ">=4.9.0.80" },
     { name = "opencv-python-headless", specifier = ">=4.12.0.88" },
+    { name = "packaging", specifier = ">=25.0" },
+    { name = "pathspec", specifier = ">=0.12.1" },
+    { name = "pluggy", specifier = ">=1.6.0" },
     { name = "pycocotools", specifier = ">=2.0.10" },
     { name = "pycuda", specifier = ">=2025.1.2" },
     { name = "pydantic", specifier = "==2.10.6" },
