@@ -233,6 +233,7 @@ def attention(
             softmax_scale=softmax_scale,
             q_scale=q_scale,
             causal=causal,
+            window_size=window_size,
             dtype=dtype,
             return_logits=ATTENTION_WEIGHT_CAPTURE.capture_logits,  # 根据配置返回 logits 或 probs
         )
@@ -293,6 +294,7 @@ def attention_with_weights(
     softmax_scale=None,
     q_scale=None,
     causal=False,
+    window_size=(-1, -1),
     dtype=torch.bfloat16,
     return_logits=True,
 ):
@@ -313,10 +315,7 @@ def attention_with_weights(
                   如果 return_logits=True，这是 pre-softmax 分数（可以是负值）
                   如果 return_logits=False，这是 post-softmax 概率 [0,1]
     """
-    if q_lens is not None or k_lens is not None:
-        warnings.warn(
-            'Padding mask is disabled when computing attention weights. It can have a significant impact on performance.'
-        )
+    out_dtype = q.dtype
 
     # q: [B, Lq, N, C] -> [B, N, Lq, C]
     # k: [B, Lk, N, C] -> [B, N, Lk, C]
@@ -328,6 +327,15 @@ def attention_with_weights(
     if q_scale is not None:
         q = q * q_scale
 
+    # Support GQA/MQA: Q heads can be a multiple of K/V heads (Nq must be divisible by Nk).
+    if q.shape[1] != k.shape[1]:
+        n_q, n_k = q.shape[1], k.shape[1]
+        if n_q % n_k != 0:
+            raise ValueError(f"Nq must be divisible by Nk, got Nq={n_q}, Nk={n_k}")
+        repeat_factor = n_q // n_k
+        k = k.repeat_interleave(repeat_factor, dim=1)
+        v = v.repeat_interleave(repeat_factor, dim=1)
+
     # 计算缩放因子
     if softmax_scale is None:
         softmax_scale = q.shape[-1] ** -0.5
@@ -335,14 +343,47 @@ def attention_with_weights(
     # 计算注意力分数（logits）: [B, N, Lq, Lk]
     attn_scores = torch.matmul(q, k.transpose(-2, -1)) * softmax_scale
 
+    bsz, _n, lq, lk = attn_scores.shape
+
+    # Apply key padding mask if provided (k_lens is [B]).
+    q_valid = None
+    if k_lens is not None:
+        key_idx = torch.arange(lk, device=attn_scores.device).view(1, 1, 1, lk)
+        key_valid = key_idx < k_lens.view(bsz, 1, 1, 1)
+        attn_scores = attn_scores.masked_fill(~key_valid, float('-inf'))
+
+    # Track query validity to avoid NaNs when a padded query would be fully masked.
+    if q_lens is not None:
+        q_idx = torch.arange(lq, device=attn_scores.device).view(1, 1, lq, 1)
+        q_valid = q_idx < q_lens.view(bsz, 1, 1, 1)
+        attn_scores = attn_scores.masked_fill(~q_valid, 0.0)
+
     # 如果需要 causal mask
     if causal:
-        lq, lk = attn_scores.shape[-2], attn_scores.shape[-1]
+        offset = lk - lq
         causal_mask = torch.triu(
             torch.ones(lq, lk, device=attn_scores.device, dtype=torch.bool),
-            diagonal=1
+            diagonal=offset + 1
         )
         attn_scores = attn_scores.masked_fill(causal_mask, float('-inf'))
+
+    # Sliding window local attention (if enabled).
+    # Semantics follow the same "offset" convention as the causal mask for non-square Q/K:
+    # query position i is aligned to key position i + (lk - lq).
+    if window_size != (-1, -1):
+        left, right = window_size
+        if left < 0:
+            left = lk
+        if right < 0:
+            right = lk
+        offset = lk - lq
+        q_pos = torch.arange(lq, device=attn_scores.device).view(lq, 1)
+        k_pos = torch.arange(lk, device=attn_scores.device).view(1, lk)
+        center = q_pos + offset
+        lower = center - left
+        upper = center + right
+        window_mask = (k_pos < lower) | (k_pos > upper)
+        attn_scores = attn_scores.masked_fill(window_mask, float('-inf'))
 
     # 计算注意力权重（概率）
     attn_weights = torch.softmax(attn_scores, dim=-1)
@@ -354,8 +395,12 @@ def attention_with_weights(
     # 计算输出: [B, N, Lq, C]
     out = torch.matmul(attn_weights, v)
 
+    if q_valid is not None:
+        out = out.masked_fill(~q_valid, 0.0)
+        attn_weights = attn_weights.masked_fill(~q_valid, 0.0)
+
     # 转置回来: [B, N, Lq, C] -> [B, Lq, N, C]
-    out = out.transpose(1, 2).contiguous()
+    out = out.transpose(1, 2).contiguous().to(out_dtype)
 
     # 根据配置返回 logits 或 probs
     if return_logits:
