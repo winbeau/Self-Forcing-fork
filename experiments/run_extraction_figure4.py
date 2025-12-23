@@ -89,11 +89,25 @@ def main():
     num_layers = len(pipeline.generator.model.blocks)
     print(f"模型层数: {num_layers}")
 
+    # 重要：每个 block 有 2 次 attention 调用：
+    #   - 偶数索引 (0, 2, 4, ...) = self-attention (video tokens)
+    #   - 奇数索引 (1, 3, 5, ...) = cross-attention (text tokens)
+    # 用户请求的 layer_indices 需要映射到 self-attention 的调用索引
+    # layer N → 调用索引 2*N
+    if args.layer_indices is not None:
+        self_attn_indices = [2 * layer_idx for layer_idx in args.layer_indices]
+        print(f"请求层: {args.layer_indices} → 映射到 self-attn 调用索引: {self_attn_indices}")
+    else:
+        # 如果没有指定，捕获所有层的 self-attention
+        self_attn_indices = [2 * i for i in range(num_layers)]
+        print(f"捕获所有 {num_layers} 层的 self-attention")
+
     # 启用 attention 捕获
+    # num_layers 设为 2*num_layers，因为每个 block 有 2 次调用
     ATTENTION_WEIGHT_CAPTURE.enable(
-        layer_indices=args.layer_indices,
+        layer_indices=self_attn_indices,
         capture_logits=True,  # 捕获 pre-softmax logits
-        num_layers=num_layers  # 传入层数用于模块化索引
+        num_layers=num_layers * 2  # 每个 block 有 2 次 attention 调用
     )
 
     try:
@@ -124,22 +138,26 @@ def main():
 
     # ========== 处理和保存捕获的数据 ==========
     # 按层分组，找到最后一个 block 的 attention（K 长度最大的）
+    # 注意：layer_idx 是调用索引（0, 2, 4, ...），需要转换回 block 索引（0, 1, 2, ...）
     layer_attentions = {}
     for attn in captured_weights:
-        layer_idx = attn['layer_idx']
-        if layer_idx not in layer_attentions:
-            layer_attentions[layer_idx] = []
-        layer_attentions[layer_idx].append(attn)
+        call_idx = attn['layer_idx']  # 调用索引 (0, 2, 4, ...)
+        block_idx = call_idx // 2     # 转换回 block 索引 (0, 1, 2, ...)
+        if block_idx not in layer_attentions:
+            layer_attentions[block_idx] = []
+        layer_attentions[block_idx].append(attn)
 
     # 每层选择 K 长度最大的（对应最后一个 temporal block，包含所有历史帧）
     final_attentions = []
-    for layer_idx in sorted(layer_attentions.keys()):
-        attns = layer_attentions[layer_idx]
+    for block_idx in sorted(layer_attentions.keys()):
+        attns = layer_attentions[block_idx]
         # 按 K 的长度排序，取最大的
         attns_sorted = sorted(attns, key=lambda x: x['k_shape'][1], reverse=True)
         selected = attns_sorted[0]
+        # 更新 layer_idx 为 block 索引
+        selected = {**selected, 'layer_idx': block_idx}
         final_attentions.append(selected)
-        print(f"Layer {layer_idx}: selected attention with Q={selected['q_shape']}, K={selected['k_shape']}")
+        print(f"Layer {block_idx}: selected attention with Q={selected['q_shape']}, K={selected['k_shape']}")
 
     # 计算 frame_seq_length
     # 从 K 的形状推断：K shape 应该是 [B, L_k, N, D]
