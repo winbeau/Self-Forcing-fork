@@ -193,52 +193,89 @@ Key config parameters:
 - `notebooks/` - Jupyter notebooks for visualization
 - `figures/` - Generated SVG figures
 - `cache/` - Cached attention weights and intermediate data
+- `docs/` - 技术文档
 
-### Figure 4 Reproduction (Attention Sink Analysis)
+### 单层注意力提取
 
-复现 Deep Forcing 论文 Figure 4 的 attention sink 现象。
+提取单层的完整 frame×frame 注意力矩阵：
 
-**背景**: 论文描述最后一个 block（frames 19-21）对前面帧（frames 0-18）的注意力权重分布，展示 attention sink 现象。
-
-**关键文件**:
-- `experiments/run_extraction_figure4.py` - 提取注意力权重
-- `experiments/test_attention_extraction.py` - 验证提取逻辑
-- `notebooks/plt_fig4.ipynb` - 可视化 Figure 4
-- `wan/modules/attention.py` - ATTENTION_WEIGHT_CAPTURE 机制
-
-**运行提取**:
 ```bash
-# 使用基础 Wan 模型（不加载 checkpoint）
-PYTHONPATH=. python experiments/run_extraction_figure4.py \
-    --config_path configs/self_forcing_dmd.yaml \
-    --output_path cache/attention_cache_wan_base.pt \
-    --layer_indices 0 4 \
-    --num_frames 21 \
-    --no_checkpoint
-
-# 使用 Self-Forcing 训练后的模型
-PYTHONPATH=. python experiments/run_extraction_figure4.py \
-    --config_path configs/self_forcing_dmd.yaml \
-    --output_path cache/attention_cache_self_forcing.pt \
-    --layer_indices 0 4 \
-    --num_frames 21 \
+# 提取第 3 层
+PYTHONPATH=. python experiments/run_extraction_each.py \
+    --layer_index 3 \
+    --output_path cache/layer3.pt \
     --checkpoint_path checkpoints/self_forcing_dmd.pt
+
+# 使用原始 Wan 模型
+PYTHONPATH=. python experiments/run_extraction_each.py \
+    --layer_index 3 \
+    --output_path cache/layer3_wan.pt \
+    --no_checkpoint
 ```
 
-**运行测试**:
+**输出数据结构**:
+- `full_frame_attention`: [12, 19, 19] - 完整 frame×frame 注意力矩阵
+- `last_block_frame_attention`: [12, 19] - 最后 block 对各帧的注意力
+- `block_sizes`: [1, 3, 3, 3, 3, 3, 3] - block 结构
+
+**可视化**: `notebooks/extract_all_attention.ipynb`
+- 2D 热力图 (Query × Key, 3×4 网格)
+- Per-Head Grid 柱状图
+
+### 技术细节
+
+**索引映射**: 每个 Transformer block 有 2 次 attention 调用
+- 偶数索引 = self-attention (视频 tokens)
+- 奇数索引 = cross-attention (文本 tokens)
+- Layer N → self-attn call index 2*N
+
+**Block-based Causality**: 与传统 causal attention 不同
+- Block 内所有 Q frames 可以看到该 block 结束为止的所有 K frames
+- 例：Block 1 的 Q frames 1-3 都可以看到 K frames 0-3
+
+### 文档
+
+- `docs/attention_extraction.md` - 提取逻辑详解
+- `docs/attention_visualization.md` - 绘图逻辑详解
+- `docs/testing.md` - 测试模块文档
+
+## Testing
+
+### 运行测试
+
 ```bash
-PYTHONPATH=. pytest experiments/test_attention_extraction.py -v -s
+# 运行所有单元测试（跳过 GPU 测试，约 35 秒）
+python -m pytest tests -v
+
+# 运行 GPU 集成测试（需要 CUDA，约 10 分钟）
+python -m pytest tests --run-slow -v
+
+# 只运行特定测试
+python -m pytest tests/test_extraction_logic.py -v
 ```
 
-**技术细节**:
-- `ATTENTION_WEIGHT_CAPTURE` 使用模块化索引（`current_layer_idx % num_layers`）
-- Wan 模型有 30 层，每个 block 3 帧，frame_seq_length=1560 tokens/帧
-- 捕获 pre-softmax logits（不是 softmax 后的概率）
-- 最后一个 block 的 K 包含所有历史帧（Q=3帧, K=21帧）
+### 测试结构
 
-**进度**:
-- [x] 修复 ATTENTION_WEIGHT_CAPTURE 模块化索引问题
-- [x] 添加 pytest 测试验证捕获逻辑
-- [x] 测试通过：最后 block Q=3帧, K=21帧
-- [ ] 对比基础模型 vs Self-Forcing 模型的 attention 分布
-- [ ] 分析 attention sink 现象
+```
+tests/
+├── conftest.py                    # pytest 配置和进度提示 hooks
+├── test_extraction_logic.py       # 主测试文件 (6 个测试类)
+├── test_attention_equivalence.py  # attention 函数等价性测试
+├── test_attention_extraction.py   # 注意力捕获机制测试
+└── test_flash.py                  # Flash Attention 测试
+```
+
+### 测试标记
+
+| 标记 | 说明 |
+|-----|------|
+| `@pytest.mark.slow` | GPU 测试，需要 `--run-slow` |
+| `@pytest.mark.gpu` | 需要 CUDA |
+
+### 关键测试类
+
+- `TestBlockStructure` - block 结构计算
+- `TestIndexMapping` - layer → self-attn 索引映射
+- `TestAttentionCaptureMechanism` - ATTENTION_WEIGHT_CAPTURE 机制
+- `TestFrameAttentionComputation` - token→frame 聚合
+- `TestIntegrationWithGPU` - GPU 集成测试

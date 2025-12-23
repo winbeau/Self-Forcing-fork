@@ -6,6 +6,8 @@
 1. 模块化索引正确工作
 2. 能捕获到多个 block/timestep 的 attention
 3. 最后一个 block 的 K 包含所有历史帧
+
+注意：GPU 测试需要 --run-slow 选项
 """
 
 import pytest
@@ -16,8 +18,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-class TestAttentionCapture:
-    """测试 AttentionWeightCapture 类"""
+class TestAttentionCaptureUnit:
+    """单元测试（不需要 GPU）"""
 
     def test_modular_index(self):
         """测试模块化索引正确工作"""
@@ -45,6 +47,12 @@ class TestAttentionCapture:
         print(f"✓ 模块化索引测试通过: 捕获了 {len(results)} 个 attention")
         print(f"  捕获详情: {results}")
 
+
+@pytest.mark.slow
+@pytest.mark.gpu
+class TestAttentionCaptureGPU:
+    """GPU 集成测试（需要 --run-slow）"""
+
     def test_capture_shape_grows_with_kv_cache(self):
         """测试 KV cache 模式下，K 的长度随着 block 增加而增长"""
         if not torch.cuda.is_available():
@@ -55,6 +63,7 @@ class TestAttentionCapture:
         from wan.modules.attention import ATTENTION_WEIGHT_CAPTURE
         from utils.misc import set_seed
 
+        print("\n📁 加载配置...")
         set_seed(42)
         device = torch.device("cuda:0")
 
