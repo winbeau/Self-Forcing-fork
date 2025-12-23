@@ -318,9 +318,9 @@ class TestFrameAttentionComputation:
         例如：block 1 的 Q frames 1-3 都可以看到 K frames 0-3。
         """
         num_heads = 12
-        num_frames = 21
         frame_seq_length = 1560
         block_sizes = [1, 3, 3, 3, 3, 3, 3]
+        num_frames = sum(block_sizes)  # 19 帧 (与 block_sizes 保持一致)
 
         # 初始化完整矩阵
         full_frame_attn = torch.zeros(num_heads, num_frames, num_frames)
@@ -386,14 +386,17 @@ class TestIntegrationWithGPU:
         device = torch.device("cuda:0")
 
         # 加载配置
+        print("\n📁 加载配置文件...")
         config = OmegaConf.load("configs/self_forcing_dmd.yaml")
         default_config = OmegaConf.load("configs/default_config.yaml")
         config = OmegaConf.merge(default_config, config)
 
+        print("🔧 初始化 pipeline...")
         torch.set_grad_enabled(False)
         pipeline = CausalInferencePipeline(args=config, device=device)
         pipeline = pipeline.to(device=device, dtype=torch.bfloat16)
         pipeline.eval()
+        print("✓ Pipeline 初始化完成")
 
         num_layers = len(pipeline.generator.model.blocks)
         num_frames = 21
@@ -418,12 +421,14 @@ class TestIntegrationWithGPU:
         )
 
         try:
+            print("🚀 运行推理 (首次运行需要编译，请耐心等待)...")
             pipeline.inference(
                 noise=noise,
                 text_prompts=["A test video"],
                 return_latents=True,
             )
             captured = ATTENTION_WEIGHT_CAPTURE.captured_weights.copy()
+            print(f"✓ 推理完成，捕获了 {len(captured)} 个 attention")
         finally:
             ATTENTION_WEIGHT_CAPTURE.disable()
 
@@ -460,14 +465,17 @@ class TestIntegrationWithGPU:
         set_seed(42)
         device = torch.device("cuda:0")
 
+        print("\n📁 加载配置文件...")
         config = OmegaConf.load("configs/self_forcing_dmd.yaml")
         default_config = OmegaConf.load("configs/default_config.yaml")
         config = OmegaConf.merge(default_config, config)
 
+        print("🔧 初始化 pipeline...")
         torch.set_grad_enabled(False)
         pipeline = CausalInferencePipeline(args=config, device=device)
         pipeline = pipeline.to(device=device, dtype=torch.bfloat16)
         pipeline.eval()
+        print("✓ Pipeline 初始化完成")
 
         num_layers = len(pipeline.generator.model.blocks)
         num_frames = 21
@@ -491,16 +499,19 @@ class TestIntegrationWithGPU:
         )
 
         try:
+            print("🚀 运行推理...")
             pipeline.inference(
                 noise=noise,
                 text_prompts=["A test video"],
                 return_latents=True,
             )
             captured = ATTENTION_WEIGHT_CAPTURE.captured_weights.copy()
+            print(f"✓ 推理完成，捕获了 {len(captured)} 个 attention")
         finally:
             ATTENTION_WEIGHT_CAPTURE.disable()
 
         # 按 K 长度排序
+        print("📊 构建完整矩阵...")
         attns_sorted = sorted(captured, key=lambda x: x['k_shape'][1])
 
         # 构建完整矩阵
