@@ -1,5 +1,6 @@
 # Copyright 2024-2025 The Alibaba Wan Team Authors. All rights reserved.
 import torch
+import gc
 
 try:
     import flash_attn_interface
@@ -28,7 +29,206 @@ __all__ = [
     'attention',
     'attention_with_weights',
     'ATTENTION_WEIGHT_CAPTURE',
+    'STREAMING_FRAME_ATTENTION_CAPTURE',
 ]
+
+
+# ============================================================
+# Streaming Frame-Level Attention Capture (Memory Efficient)
+# ============================================================
+
+class StreamingFrameAttentionCapture:
+    """
+    流式帧级注意力捕获器（内存高效版本）。
+
+    核心思想：
+    1. 使用 flash attention 进行实际的前向传播（高效，无 OOM）
+    2. 分块计算 Q @ K^T 得到 attention logits
+    3. 立即聚合到 frame-level 并释放 token-level 数据
+
+    内存使用：O(Q_tokens × chunk_K_tokens) 而非 O(Q_tokens × all_K_tokens)
+    """
+
+    def __init__(self):
+        self.enabled = False
+        self.layer_indices = None
+        self.current_layer_idx = 0
+        self.num_layers = 60  # 30 blocks × 2 (self + cross)
+
+        # Frame-level 配置
+        self.frame_seq_length = 1560
+        self.num_heads = 12
+        self.chunk_frames = 3  # 每次处理的 K frames 数量
+
+        # 回调函数：接收 frame-level attention 数据
+        self.on_frame_attention = None
+
+    def enable(
+        self,
+        layer_indices=None,
+        num_layers=60,
+        frame_seq_length=1560,
+        num_heads=12,
+        chunk_frames=3,
+        on_frame_attention=None,
+    ):
+        """
+        启用流式帧级注意力捕获。
+
+        Args:
+            layer_indices: 要捕获的层索引列表（self-attn 索引）
+            num_layers: 总层数（用于取模）
+            frame_seq_length: 每帧的 token 数量
+            num_heads: 注意力头数
+            chunk_frames: 每次处理的 K frames 数量（控制内存）
+            on_frame_attention: 回调函数，签名 (layer_idx, frame_attn, q_frames, k_frames)
+                frame_attn: [num_heads, q_frames, k_frames] 的 frame-level attention logits
+        """
+        self.enabled = True
+        self.layer_indices = layer_indices
+        self.num_layers = num_layers
+        self.frame_seq_length = frame_seq_length
+        self.num_heads = num_heads
+        self.chunk_frames = chunk_frames
+        self.on_frame_attention = on_frame_attention
+        self.current_layer_idx = 0
+
+    def disable(self):
+        """禁用捕获。"""
+        self.enabled = False
+        self.current_layer_idx = 0
+        self.on_frame_attention = None
+
+    def should_capture(self):
+        """检查是否应该捕获当前层。"""
+        if not self.enabled:
+            return False
+        if self.layer_indices is None:
+            return True
+        effective_idx = self.current_layer_idx % self.num_layers
+        return effective_idx in self.layer_indices
+
+    def get_effective_layer_idx(self):
+        """获取当前的有效层索引（模块化后）。"""
+        return self.current_layer_idx % self.num_layers
+
+    def compute_frame_attention_chunked(self, q, k, softmax_scale=None):
+        """
+        分块计算 frame-level attention logits。
+
+        Args:
+            q: Query 张量 [B, N, Lq, C]（已转置）
+            k: Key 张量 [B, N, Lk, C]（已转置）
+            softmax_scale: 缩放因子
+
+        Returns:
+            frame_attn: [N, q_frames, k_frames] 的 frame-level attention logits
+        """
+        if softmax_scale is None:
+            softmax_scale = q.shape[-1] ** -0.5
+
+        b, n, lq, c = q.shape
+        lk = k.shape[2]
+
+        q_frames = lq // self.frame_seq_length
+        k_frames = lk // self.frame_seq_length
+
+        # 输出：frame-level attention [num_heads, q_frames, k_frames]
+        frame_attn = torch.zeros(n, q_frames, k_frames, dtype=torch.float32, device='cpu')
+
+        # 分块处理 K frames
+        for kf_start in range(0, k_frames, self.chunk_frames):
+            kf_end = min(kf_start + self.chunk_frames, k_frames)
+            k_token_start = kf_start * self.frame_seq_length
+            k_token_end = kf_end * self.frame_seq_length
+
+            # 取出 K chunk: [B, N, chunk_tokens, C]
+            k_chunk = k[:, :, k_token_start:k_token_end, :]
+
+            # 对每个 Q frame 计算 attention
+            for qf in range(q_frames):
+                q_token_start = qf * self.frame_seq_length
+                q_token_end = (qf + 1) * self.frame_seq_length
+
+                # 取出 Q frame: [B, N, frame_tokens, C]
+                q_frame = q[:, :, q_token_start:q_token_end, :]
+
+                # 计算 attention scores: [B, N, frame_tokens, chunk_tokens]
+                scores = torch.matmul(q_frame.float(), k_chunk.float().transpose(-2, -1)) * softmax_scale
+
+                # 聚合到 frame-level（对每个 K frame 分别计算）
+                for kf_local in range(kf_end - kf_start):
+                    kf = kf_start + kf_local
+                    k_local_start = kf_local * self.frame_seq_length
+                    k_local_end = (kf_local + 1) * self.frame_seq_length
+
+                    # 取出这个 K frame 对应的 scores
+                    frame_scores = scores[:, :, :, k_local_start:k_local_end]  # [B, N, 1560, 1560]
+
+                    # 计算均值：[N]
+                    frame_attn[:, qf, kf] = frame_scores.mean(dim=(0, 2, 3)).cpu()
+
+                # 释放中间结果
+                del scores
+
+            # 释放 K chunk
+            del k_chunk
+            torch.cuda.empty_cache()
+
+        return frame_attn
+
+    def capture_and_forward(self, q, k, v, flash_attn_fn, **kwargs):
+        """
+        捕获 frame-level attention 并执行 flash attention 前向传播。
+
+        Args:
+            q, k, v: 输入张量 [B, L, N, C]
+            flash_attn_fn: Flash attention 函数
+            **kwargs: 传递给 flash_attn_fn 的其他参数
+
+        Returns:
+            out: Flash attention 的输出
+        """
+        # 1. 执行 flash attention 得到输出
+        out = flash_attn_fn(q=q, k=k, v=v, **kwargs)
+
+        # 2. 如果需要捕获，分块计算 frame-level attention
+        if self.should_capture():
+            # 转置为 [B, N, L, C] 格式
+            q_t = q.transpose(1, 2)
+            k_t = k.transpose(1, 2)
+
+            # 处理 q_scale
+            q_scale = kwargs.get('q_scale')
+            if q_scale is not None:
+                q_t = q_t * q_scale
+
+            # 计算 frame-level attention
+            softmax_scale = kwargs.get('softmax_scale')
+            frame_attn = self.compute_frame_attention_chunked(q_t, k_t, softmax_scale)
+
+            # 调用回调
+            if self.on_frame_attention is not None:
+                q_frames = q.shape[1] // self.frame_seq_length
+                k_frames = k.shape[1] // self.frame_seq_length
+                self.on_frame_attention(
+                    layer_idx=self.get_effective_layer_idx(),
+                    frame_attn=frame_attn,
+                    q_frames=q_frames,
+                    k_frames=k_frames,
+                )
+
+            # 清理
+            del q_t, k_t, frame_attn
+            gc.collect()
+            torch.cuda.empty_cache()
+
+        self.current_layer_idx += 1
+        return out
+
+
+# 全局实例
+STREAMING_FRAME_ATTENTION_CAPTURE = StreamingFrameAttentionCapture()
 
 
 # Global attention weight capture configuration
@@ -224,7 +424,30 @@ def attention(
     dtype=torch.bfloat16,
     fa_version=None,
 ):
-    # 检查是否需要捕获注意力权重
+    # 优先检查流式帧级捕获（内存高效）
+    if STREAMING_FRAME_ATTENTION_CAPTURE.enabled:
+        if STREAMING_FRAME_ATTENTION_CAPTURE.should_capture():
+            # 使用流式捕获：flash attention + 分块计算 frame-level attention
+            out = STREAMING_FRAME_ATTENTION_CAPTURE.capture_and_forward(
+                q=q, k=k, v=v,
+                flash_attn_fn=flash_attention,
+                q_lens=q_lens,
+                k_lens=k_lens,
+                dropout_p=dropout_p,
+                softmax_scale=softmax_scale,
+                q_scale=q_scale,
+                causal=causal,
+                window_size=window_size,
+                deterministic=deterministic,
+                dtype=dtype,
+                version=fa_version,
+            )
+            return out
+        else:
+            # 不捕获，但仍需更新计数器
+            STREAMING_FRAME_ATTENTION_CAPTURE.current_layer_idx += 1
+
+    # 检查是否需要捕获完整注意力权重（旧方式，可能 OOM）
     if ATTENTION_WEIGHT_CAPTURE.enabled and ATTENTION_WEIGHT_CAPTURE.should_capture():
         out, attn_data = attention_with_weights(
             q=q, k=k, v=v,

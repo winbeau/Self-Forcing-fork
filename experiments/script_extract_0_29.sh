@@ -6,7 +6,7 @@ PROMPT="${1:-A majestic eagle soaring through a cloudy sky, cinematic lighting}"
 echo "使用提示词: $PROMPT"
 echo ""
 
-OUTPUT="cache/locomotive_rushing"
+OUTPUT="cache/castle_mountain"
 
 mkdir -p "$OUTPUT"
 
