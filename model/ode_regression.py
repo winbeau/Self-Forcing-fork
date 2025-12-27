@@ -23,7 +23,7 @@ class ODERegression(BaseModel):
         self.generator.model.requires_grad_(True)
         if getattr(args, "generator_ckpt", False):
             print(f"Loading pretrained generator from {args.generator_ckpt}")
-            state_dict = torch.load(args.generator_ckpt, map_location="cpu")[
+            state_dict = torch.load(args.generator_ckpt, map_location="cpu", weights_only=False)[
                 'generator']
             self.generator.load_state_dict(
                 state_dict, strict=True

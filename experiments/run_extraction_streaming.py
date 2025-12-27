@@ -287,10 +287,14 @@ def main():
         print(f"Final GPU memory: {torch.cuda.memory_allocated(device) / 1024**3:.2f} GB")
 
         if isinstance(output, tuple):
+            output_video = output[0]  # 已解码的视频 [B, T, C, H, W], range [0, 1]
             output_latent = output[1]
         else:
+            output_video = None
             output_latent = output
         print(f"Output latent shape: {output_latent.shape}")
+        if output_video is not None:
+            print(f"Output video shape: {output_video.shape}")
 
     finally:
         STREAMING_FRAME_ATTENTION_CAPTURE.disable()
@@ -347,6 +351,50 @@ def main():
     print(f"Diagonal mean: {diag_mean:.4f}")
     print(f"First frame (sink) mean: {first_col_mean:.4f}")
 
+    # ========== 保存视频（可选） ==========
+    if args.save_video:
+        print("\n" + "=" * 60)
+        print("SAVING VIDEO")
+        print("=" * 60)
+
+        # 确定视频路径
+        if args.video_path:
+            video_path = args.video_path
+        else:
+            video_path = args.output_path.replace('.pt', '.mp4')
+
+        if output_video is None:
+            print("Error: No video output from pipeline")
+        else:
+            # output_video: [B, T, C, H, W], range [0, 1]
+            # 转换为 [T, H, W, C] 格式，range [0, 255]
+            from einops import rearrange
+            video = rearrange(output_video, 'b t c h w -> b t h w c').cpu()
+            video = (video[0] * 255.0).to(torch.uint8)  # [T, H, W, C]
+
+            print(f"Video shape: {video.shape} [T, H, W, C]")
+
+            # 保存视频
+            os.makedirs(os.path.dirname(video_path) if os.path.dirname(video_path) else '.', exist_ok=True)
+
+            import cv2
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            h, w = video.shape[1], video.shape[2]
+            out = cv2.VideoWriter(video_path, fourcc, 16, (w, h))
+            for frame in video.numpy():
+                out.write(cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+            out.release()
+
+            print(f"Video saved to: {video_path}")
+
+        # 清理 VAE cache
+        pipeline.vae.model.clear_cache()
+
+        # 清理
+        del output_video
+        gc.collect()
+        torch.cuda.empty_cache()
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Streaming frame-level attention extraction")
@@ -365,6 +413,10 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--gpu_id", type=int, default=0)
     parser.add_argument("--force", action="store_true", help="Force run even if memory warning")
+    # 视频保存选项
+    parser.add_argument("--save_video", action="store_true", help="Save generated video")
+    parser.add_argument("--video_path", type=str, default=None,
+                        help="Video output path (default: same as output_path but .mp4)")
     return parser.parse_args()
 
 

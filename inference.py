@@ -67,7 +67,7 @@ else:
     pipeline = CausalDiffusionInferencePipeline(config, device=device)
 
 if args.checkpoint_path:
-    state_dict = torch.load(args.checkpoint_path, map_location="cpu")
+    state_dict = torch.load(args.checkpoint_path, map_location="cpu", weights_only=False)
     pipeline.generator.load_state_dict(state_dict['generator' if not args.use_ema else 'generator_ema'])
 
 pipeline = pipeline.to(dtype=torch.bfloat16)

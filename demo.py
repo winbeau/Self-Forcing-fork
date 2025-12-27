@@ -100,7 +100,7 @@ def initialize_vae_decoder(use_taehv=False, use_trt=False):
         current_vae_decoder = TAEHVDiffusersWrapper()
     else:
         current_vae_decoder = VAEDecoderWrapper()
-        vae_state_dict = torch.load('wan_models/Wan2.1-T2V-1.3B/Wan2.1_VAE.pth', map_location="cpu")
+        vae_state_dict = torch.load('wan_models/Wan2.1-T2V-1.3B/Wan2.1_VAE.pth', map_location="cpu", weights_only=False)
         decoder_state_dict = {}
         for key, value in vae_state_dict.items():
             if 'decoder.' in key or 'conv2' in key:
@@ -121,7 +121,7 @@ def initialize_vae_decoder(use_taehv=False, use_trt=False):
 vae_decoder = initialize_vae_decoder(use_taehv=False, use_trt=args.trt)
 
 transformer = WanDiffusionWrapper(is_causal=True)
-state_dict = torch.load(args.checkpoint_path, map_location="cpu")
+state_dict = torch.load(args.checkpoint_path, map_location="cpu", weights_only=False)
 transformer.load_state_dict(state_dict['generator_ema'])
 
 text_encoder.eval()
