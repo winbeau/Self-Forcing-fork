@@ -193,3 +193,44 @@ bash scripts/bench_infer.sh \
 ```
 
 不同实验的 `prompts.csv` 内容一致，视频序号一一对应，可直接做逐条对比。
+
+---
+
+## 长视频生成 (Rolling KV Cache)
+
+使用 `self_forcing_dmd_long.yaml` 配置启用 rolling KV cache，突破默认 21 帧限制，生成更长视频。
+
+**原理：**
+- `local_attn_size=21`：滑动窗口大小与训练上下文长度一致（21 帧），最小化分布偏移
+- `sink_size=1`：保留第一帧作为全局锚点，维持长视频一致性
+- KV cache 自动滚动淘汰旧 token，VRAM 占用恒定
+
+**帧数换算：** `像素帧 = (latent_frames - 1) × 4 + 1`
+
+| Latent 帧数 | 像素帧数 | 视频时长 (16fps) |
+|---|---|---|
+| 21 (默认) | 81 | ~5s |
+| 42 | 165 | ~10s |
+| 60 | 237 | ~15s |
+| 120 | 477 | ~30s |
+
+```bash
+# 120 latent 帧 (~30s 视频)
+bash scripts/bench_infer.sh \
+  --config configs/self_forcing_dmd_long.yaml \
+  --checkpoint checkpoints/self_forcing_dmd.pt \
+  --num_frames 120 \
+  --num_gpus 4 \
+  --output outputs/long_120f \
+  --use_ema
+
+# 先用较短帧数测试
+bash scripts/bench_infer.sh \
+  --config configs/self_forcing_dmd_long.yaml \
+  --checkpoint checkpoints/self_forcing_dmd.pt \
+  --num_frames 42 \
+  --output outputs/long_test \
+  --use_ema
+```
+
+**注意：** 120 帧 VAE 解码可能 OOM，如遇到需在 `causal_inference.py` 中添加分块解码。
