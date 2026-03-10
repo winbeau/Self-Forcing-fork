@@ -3,13 +3,13 @@ set -euo pipefail
 
 # ======== Defaults ========
 CONFIG_PATH="configs/self_forcing_dmd.yaml"
-CHECKPOINT_PATH=""
+CHECKPOINT_PATH="checkpoints/self_forcing_dmd.pt"
 DATA_PATH="prompts/MovieGenVideoBench_num32.txt"
 OUTPUT_DIR="outputs/movie_gen_bench"
 NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
 NUM_OUTPUT_FRAMES=21
 SEED=0
-USE_EMA=false
+USE_EMA=true
 
 # ======== Parse arguments ========
 while [[ $# -gt 0 ]]; do
