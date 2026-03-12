@@ -7,9 +7,61 @@ CHECKPOINT_PATH="checkpoints/self_forcing_dmd.pt"
 DATA_PATH="prompts/MovieGenVideoBench_num32.txt"
 OUTPUT_DIR="outputs/movie_gen_bench"
 NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
+MASTER_PORT=29501
 NUM_OUTPUT_FRAMES=21
 SEED=0
 USE_EMA=true
+
+usage() {
+    cat <<'EOF'
+Usage: bash scripts/bench_infer.sh [options]
+
+Options:
+  --config PATH         Model config path
+  --checkpoint PATH     Checkpoint path
+  --data PATH           Prompt txt path
+  --output PATH         Output directory
+  --num_gpus N          Number of GPUs / torchrun processes
+  --master_port PORT    torchrun master port (default: 29501)
+  --num_frames N        Number of latent output frames
+  --seed N              Base random seed
+  --use_ema             Use EMA weights
+  --help                Show this help message
+EOF
+}
+
+require_positive_int() {
+    local name="$1"
+    local value="$2"
+    if [[ ! "$value" =~ ^[1-9][0-9]*$ ]]; then
+        echo "Invalid $name: $value" >&2
+        exit 1
+    fi
+}
+
+validate_visible_devices() {
+    if [[ -z "${CUDA_VISIBLE_DEVICES+x}" ]]; then
+        return
+    fi
+
+    local raw_devices="$CUDA_VISIBLE_DEVICES"
+    local -a parsed_devices=()
+    local device=""
+    local visible_count=0
+
+    IFS=',' read -r -a parsed_devices <<< "$raw_devices"
+    for device in "${parsed_devices[@]}"; do
+        device="${device//[[:space:]]/}"
+        [[ -z "$device" ]] && continue
+        visible_count=$((visible_count + 1))
+    done
+
+    if [[ "$visible_count" -ne "$NUM_GPUS" ]]; then
+        echo "CUDA_VISIBLE_DEVICES count ($visible_count) does not match --num_gpus ($NUM_GPUS)." >&2
+        echo "  CUDA_VISIBLE_DEVICES=$raw_devices" >&2
+        exit 1
+    fi
+}
 
 # ======== Parse arguments ========
 while [[ $# -gt 0 ]]; do
@@ -19,12 +71,19 @@ while [[ $# -gt 0 ]]; do
         --data)         DATA_PATH="$2";         shift 2 ;;
         --output)       OUTPUT_DIR="$2";        shift 2 ;;
         --num_gpus)     NUM_GPUS="$2";          shift 2 ;;
+        --master_port)  MASTER_PORT="$2";       shift 2 ;;
         --num_frames)   NUM_OUTPUT_FRAMES="$2"; shift 2 ;;
         --seed)         SEED="$2";              shift 2 ;;
         --use_ema)      USE_EMA=true;           shift ;;
+        --help)         usage;                  exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
+
+require_positive_int "--num_gpus" "$NUM_GPUS"
+require_positive_int "--master_port" "$MASTER_PORT"
+require_positive_int "--num_frames" "$NUM_OUTPUT_FRAMES"
+validate_visible_devices
 
 mkdir -p "$OUTPUT_DIR"
 
@@ -76,20 +135,27 @@ trap cleanup EXIT
 echo "[2/3] File watcher started (PID $WATCHER_PID)"
 
 # ======== 3. Launch multi-GPU inference ========
-EXTRA_FLAGS=""
-$USE_EMA && EXTRA_FLAGS="--use_ema"
-[ -n "$CHECKPOINT_PATH" ] && EXTRA_FLAGS="$EXTRA_FLAGS --checkpoint_path $CHECKPOINT_PATH"
-
 echo "[3/3] Launching torchrun on $NUM_GPUS GPU(s) ..."
-torchrun --nproc_per_node="$NUM_GPUS" \
-    inference.py \
-    --config_path  "$CONFIG_PATH" \
-    --data_path    "$DATA_PATH" \
-    --output_folder "$OUTPUT_DIR" \
-    --num_output_frames "$NUM_OUTPUT_FRAMES" \
-    --seed "$SEED" \
-    --save_with_index \
-    $EXTRA_FLAGS
+TORCHRUN_CMD=(
+    torchrun
+    "--nproc_per_node=$NUM_GPUS"
+    "--master_port=$MASTER_PORT"
+    inference.py
+    --config_path "$CONFIG_PATH"
+    --data_path "$DATA_PATH"
+    --output_folder "$OUTPUT_DIR"
+    --num_output_frames "$NUM_OUTPUT_FRAMES"
+    --seed "$SEED"
+    --save_with_index
+)
+
+$USE_EMA && TORCHRUN_CMD+=(--use_ema)
+[[ -n "$CHECKPOINT_PATH" ]] && TORCHRUN_CMD+=(--checkpoint_path "$CHECKPOINT_PATH")
+
+printf '  ->'
+printf ' %q' "${TORCHRUN_CMD[@]}"
+printf '\n'
+"${TORCHRUN_CMD[@]}"
 
 # ======== 4. Final rename sweep ========
 cleanup

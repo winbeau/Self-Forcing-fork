@@ -81,13 +81,14 @@ Multi-GPU 批量推理脚本，适用于对比实验。从 prompt 文本文件�
 
 ```bash
 # DMD 14B (推荐)
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
-  --checkpoint checkpoints/self_forcing_dmd.pt \
   --num_gpus 4 \
   --output outputs/dmd_14B \
   --use_ema
 
 # SID 1.3B
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
   --config configs/self_forcing_sid.yaml \
   --checkpoint checkpoints/self_forcing_sid.pt \
@@ -100,9 +101,9 @@ bash scripts/bench_infer.sh \
 
 ```bash
 # 120 latent 帧
+CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
   --config configs/self_forcing_dmd_long.yaml \
-  --checkpoint checkpoints/self_forcing_dmd.pt \
   --num_frames 120 \
   --num_gpus 4 \
   --output outputs/long_120f \
@@ -111,7 +112,6 @@ bash scripts/bench_infer.sh \
 # 先用 42 帧做 smoke test
 bash scripts/bench_infer.sh \
   --config configs/self_forcing_dmd_long.yaml \
-  --checkpoint checkpoints/self_forcing_dmd.pt \
   --num_frames 42 \
   --output outputs/long_test \
   --use_ema
@@ -135,6 +135,7 @@ bash scripts/bench_infer.sh \
 | `--data` | `prompts/MovieGenVideoBench_num32.txt` | Prompt 文件，每行一条 |
 | `--output` | `outputs/movie_gen_bench` | 输出目录 |
 | `--num_gpus` | 自动检测全部 GPU | 并行 GPU 数量 |
+| `--master_port` | `29501` | 透传给 `torchrun` 的 master port |
 | `--num_frames` | `21` | 生成的 **latent 帧数** (非像素帧数) |
 | `--seed` | `0` | 随机种子 (多卡时 GPU *i* 的种子为 `seed + i`) |
 | `--use_ema` | `true` | 使用 EMA 权重推理 |
@@ -166,9 +167,10 @@ index,prompt
 
 ## 多卡并行机制
 
-- 使用 `torchrun --nproc_per_node=N` 启动，NCCL 后端
+- 使用 `torchrun --nproc_per_node=N --master_port=PORT` 启动，NCCL 后端
 - `DistributedSampler(shuffle=False, drop_last=True)` 将 prompt 均匀分配给各 GPU
 - 每张 GPU 独立保存自己负责的视频，无跨卡聚合
+- 如果设置了 `CUDA_VISIBLE_DEVICES`，脚本会严格检查可见卡数量必须等于 `--num_gpus`
 - **注意：** `drop_last=True` 要求 prompt 数量能被 GPU 数整除，否则末尾 prompt 会被丢弃
   - 32 prompts: 1/2/4/8 卡均可整除
 - 每张 GPU 的种子为 `seed + local_rank`，保证不同卡生成不同噪声
