@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ======== Defaults ========
-CONFIG_PATH="configs/self_forcing_dmd.yaml"
+CONFIG_PATH="configs/self_forcing_dmd_long.yaml"
 CHECKPOINT_PATH="checkpoints/self_forcing_dmd.pt"
 DATA_PATH="prompts/MovieGenVideoBench_num32.txt"
 OUTPUT_DIR="outputs/movie_gen_bench"

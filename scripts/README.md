@@ -83,6 +83,7 @@ Multi-GPU 批量推理脚本，适用于对比实验。从 prompt 文本文件�
 # DMD 14B (推荐)
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
+  --config configs/self_forcing_dmd.yaml \
   --num_frames 21 \
   --num_gpus 4 \
   --output outputs/dmd_14B
@@ -103,7 +104,6 @@ bash scripts/bench_infer.sh \
 # 120 latent 帧
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
-  --config configs/self_forcing_dmd_long.yaml \
   --num_gpus 4 \
   --output outputs/long_120f
 
@@ -127,7 +127,7 @@ bash scripts/bench_infer.sh \
 
 | 参数 | 默认值 | 说明 |
 |---|---|---|
-| `--config` | `configs/self_forcing_dmd.yaml` | 模型配置文件 |
+| `--config` | `configs/self_forcing_dmd_long.yaml` | 模型配置文件 |
 | `--checkpoint` | `checkpoints/self_forcing_dmd.pt` | 权重路径 (`.pt`) |
 | `--data` | `prompts/MovieGenVideoBench_num32.txt` | Prompt 文件，每行一条 |
 | `--output` | `outputs/movie_gen_bench` | 输出目录 |
