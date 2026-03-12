@@ -28,7 +28,7 @@ Multi-GPU 批量推理脚本，适用于对比实验。从 prompt 文本文件�
 | **Guidance scale** | 3.0 | 3.0 |
 | **Timestep shift** | 5.0 | 5.0 |
 | **Warp denoising** | Yes | Yes |
-| **EMA 权重** | Yes (`--use_ema`) | Yes (`--use_ema`) |
+| **EMA 权重** | Yes (默认) | Yes (默认) |
 | **KV cache** | 固定 (21帧) | Rolling (`local_attn_size=21, sink_size=1`) |
 
 > **帧数换算：** `像素帧 = (latent_frames - 1) × 4 + 1`
@@ -84,8 +84,7 @@ Multi-GPU 批量推理脚本，适用于对比实验。从 prompt 文本文件�
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
   --num_gpus 4 \
-  --output outputs/dmd_14B \
-  --use_ema
+  --output outputs/dmd_14B
 
 # SID 1.3B
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
@@ -93,8 +92,7 @@ bash scripts/bench_infer.sh \
   --config configs/self_forcing_sid.yaml \
   --checkpoint checkpoints/self_forcing_sid.pt \
   --num_gpus 4 \
-  --output outputs/sid_1_3B \
-  --use_ema
+  --output outputs/sid_1_3B
 ```
 
 ### 长视频实验 (~30s 视频, Rolling KV Cache)
@@ -106,15 +104,13 @@ bash scripts/bench_infer.sh \
   --config configs/self_forcing_dmd_long.yaml \
   --num_frames 120 \
   --num_gpus 4 \
-  --output outputs/long_120f \
-  --use_ema
+  --output outputs/long_120f
 
 # 先用 42 帧做 smoke test
 bash scripts/bench_infer.sh \
   --config configs/self_forcing_dmd_long.yaml \
   --num_frames 42 \
-  --output outputs/long_test \
-  --use_ema
+  --output outputs/long_test
 ```
 
 **Rolling KV Cache 原理：**
@@ -138,7 +134,8 @@ bash scripts/bench_infer.sh \
 | `--master_port` | `29501` | 透传给 `torchrun` 的 master port |
 | `--num_frames` | `21` | 生成的 **latent 帧数** (非像素帧数) |
 | `--seed` | `0` | 随机种子 (多卡时 GPU *i* 的种子为 `seed + i`) |
-| `--use_ema` | `true` | 使用 EMA 权重推理 |
+| `--use_ema` | 默认开启 | 使用 EMA 权重推理 |
+| `--no_use_ema` | 关闭 | 显式关闭 EMA 权重推理 |
 
 ---
 

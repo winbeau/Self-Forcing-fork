@@ -25,7 +25,8 @@ Options:
   --master_port PORT    torchrun master port (default: 29501)
   --num_frames N        Number of latent output frames
   --seed N              Base random seed
-  --use_ema             Use EMA weights
+  --use_ema             Use EMA weights (default)
+  --no_use_ema          Disable EMA weights
   --help                Show this help message
 EOF
 }
@@ -75,6 +76,7 @@ while [[ $# -gt 0 ]]; do
         --num_frames)   NUM_OUTPUT_FRAMES="$2"; shift 2 ;;
         --seed)         SEED="$2";              shift 2 ;;
         --use_ema)      USE_EMA=true;           shift ;;
+        --no_use_ema)   USE_EMA=false;          shift ;;
         --help)         usage;                  exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
