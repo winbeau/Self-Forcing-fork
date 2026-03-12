@@ -83,6 +83,7 @@ Multi-GPU 批量推理脚本，适用于对比实验。从 prompt 文本文件�
 # DMD 14B (推荐)
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
+  --num_frames 21 \
   --num_gpus 4 \
   --output outputs/dmd_14B
 
@@ -91,6 +92,7 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
   --config configs/self_forcing_sid.yaml \
   --checkpoint checkpoints/self_forcing_sid.pt \
+  --num_frames 21 \
   --num_gpus 4 \
   --output outputs/sid_1_3B
 ```
@@ -102,7 +104,6 @@ bash scripts/bench_infer.sh \
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 bash scripts/bench_infer.sh \
   --config configs/self_forcing_dmd_long.yaml \
-  --num_frames 120 \
   --num_gpus 4 \
   --output outputs/long_120f
 
@@ -132,7 +133,7 @@ bash scripts/bench_infer.sh \
 | `--output` | `outputs/movie_gen_bench` | 输出目录 |
 | `--num_gpus` | 自动检测全部 GPU | 并行 GPU 数量 |
 | `--master_port` | `29501` | 透传给 `torchrun` 的 master port |
-| `--num_frames` | `21` | 生成的 **latent 帧数** (非像素帧数) |
+| `--num_frames` | `120` | 生成的 **latent 帧数** (非像素帧数) |
 | `--seed` | `0` | 随机种子 (多卡时 GPU *i* 的种子为 `seed + i`) |
 | `--use_ema` | 默认开启 | 使用 EMA 权重推理 |
 | `--no_use_ema` | 关闭 | 显式关闭 EMA 权重推理 |

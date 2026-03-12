@@ -8,7 +8,7 @@ DATA_PATH="prompts/MovieGenVideoBench_num32.txt"
 OUTPUT_DIR="outputs/movie_gen_bench"
 NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
 MASTER_PORT=29501
-NUM_OUTPUT_FRAMES=21
+NUM_OUTPUT_FRAMES=120
 SEED=0
 USE_EMA=true
 
