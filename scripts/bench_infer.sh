@@ -96,7 +96,7 @@ echo "[1/3] Generating prompts.csv ..."
     idx=0
     while IFS= read -r line; do
         escaped="${line//\"/\"\"}"
-        printf '%03d,"%s"\n' "$idx" "$escaped"
+        printf '%d,"%s"\n' "$idx" "$escaped"
         idx=$((idx + 1))
     done < "$DATA_PATH"
 } > "$OUTPUT_DIR/prompts.csv"

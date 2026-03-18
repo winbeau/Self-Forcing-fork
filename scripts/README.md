@@ -155,8 +155,8 @@ outputs/movie_gen_bench/
 
 ```csv
 index,prompt
-000,"A stylish woman strolls down a bustling Tokyo street, ..."
-001,"A stunning mid-afternoon landscape photograph ..."
+0,"A stylish woman strolls down a bustling Tokyo street, ..."
+1,"A stunning mid-afternoon landscape photograph ..."
 ```
 
 不同实验的 `prompts.csv` 内容一致，视频序号一一对应，可直接做逐条对比。
