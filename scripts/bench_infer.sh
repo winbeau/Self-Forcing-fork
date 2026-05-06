@@ -1,16 +1,31 @@
 #!/bin/bash
 set -euo pipefail
 
+detect_num_gpus() {
+    local devices=""
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        devices=$(nvidia-smi -L 2>/dev/null || true)
+        if [[ -n "$devices" ]]; then
+            printf '%s\n' "$devices" | wc -l
+        else
+            echo 0
+        fi
+    else
+        echo 0
+    fi
+}
+
 # ======== Defaults ========
 CONFIG_PATH="configs/self_forcing_dmd_long.yaml"
 CHECKPOINT_PATH="checkpoints/self_forcing_dmd.pt"
 DATA_PATH="prompts/MovieGenVideoBench_num32.txt"
 OUTPUT_DIR="outputs/movie_gen_bench"
-NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
+NUM_GPUS=$(detect_num_gpus)
 MASTER_PORT=29501
 NUM_OUTPUT_FRAMES=120
 SEED=0
 USE_EMA=true
+PROFILE=false
 
 usage() {
     cat <<'EOF'
@@ -27,6 +42,7 @@ Options:
   --seed N              Base random seed
   --use_ema             Use EMA weights (default)
   --no_use_ema          Disable EMA weights
+  --profile             Print diffusion/VAE timing breakdown
   --help                Show this help message
 EOF
 }
@@ -77,6 +93,7 @@ while [[ $# -gt 0 ]]; do
         --seed)         SEED="$2";              shift 2 ;;
         --use_ema)      USE_EMA=true;           shift ;;
         --no_use_ema)   USE_EMA=false;          shift ;;
+        --profile)      PROFILE=true;           shift ;;
         --help)         usage;                  exit 0 ;;
         *) echo "Unknown option: $1"; exit 1 ;;
     esac
@@ -152,6 +169,7 @@ TORCHRUN_CMD=(
 )
 
 $USE_EMA && TORCHRUN_CMD+=(--use_ema)
+$PROFILE && TORCHRUN_CMD+=(--profile)
 [[ -n "$CHECKPOINT_PATH" ]] && TORCHRUN_CMD+=(--checkpoint_path "$CHECKPOINT_PATH")
 
 printf '  ->'

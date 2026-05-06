@@ -33,6 +33,8 @@ parser.add_argument("--seed", type=int, default=0, help="Random seed")
 parser.add_argument("--num_samples", type=int, default=1, help="Number of samples to generate per prompt")
 parser.add_argument("--save_with_index", action="store_true",
                     help="Whether to save the video using the index or prompt as the filename")
+parser.add_argument("--profile", action="store_true",
+                    help="Print diffusion/VAE timing breakdown for each generated sample")
 args = parser.parse_args()
 
 # Initialize distributed inference
@@ -169,6 +171,7 @@ for i, batch_data in tqdm(enumerate(dataloader), disable=(local_rank != 0)):
         return_latents=True,
         initial_latent=initial_latent,
         low_memory=low_memory,
+        profile=args.profile,
     )
     current_video = rearrange(video, 'b t c h w -> b t h w c').cpu()
     all_video.append(current_video)
